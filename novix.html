@@ -1,4 +1,4 @@
-/<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -637,6 +637,96 @@
   }
   .btn-confirm-delete:hover { opacity: 0.85; }
 
+  /* MODAL CONTRASEÑA ADMIN */
+  .admin-lock-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 700;
+    align-items: center;
+    justify-content: center;
+  }
+  .admin-lock-overlay.open { display: flex; }
+  .admin-lock-box {
+    background: var(--dark3);
+    border: 2px solid var(--border-cyan);
+    padding: 32px 36px;
+    width: 380px;
+    max-width: 92vw;
+    clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+    text-align: center;
+  }
+  .admin-lock-icon { font-size: 2rem; margin-bottom: 12px; }
+  .admin-lock-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.8rem;
+    font-weight: 900;
+    color: var(--cyan);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .admin-lock-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .admin-lock-input {
+    width: 100%;
+    background: #030318;
+    border: 1px solid var(--border-cyan);
+    color: var(--cyan);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1rem;
+    padding: 10px 14px;
+    outline: none;
+    letter-spacing: 0.2em;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .admin-lock-input:focus { border-color: var(--cyan); }
+  .admin-lock-error {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    color: #ff4466;
+    margin-bottom: 12px;
+    min-height: 18px;
+    letter-spacing: 0.05em;
+  }
+  .btn-admin-ingresar {
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    border: none;
+    color: #fff;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 10px 28px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: opacity 0.2s;
+    margin-bottom: 10px;
+  }
+  .btn-admin-ingresar:hover { opacity: 0.85; }
+  .btn-admin-cerrar-sesion {
+    display: none;
+    background: transparent;
+    border: 1px solid #5a1a2a;
+    color: #c0304a;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    padding: 5px 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    margin-left: 8px;
+  }
+  .btn-admin-cerrar-sesion:hover { border-color: #c0304a; color: #ff4466; }
+
   /* NOTIFICATION */
   .notif {
     position: fixed;
@@ -710,7 +800,9 @@
         <span id="statusDot" style="width:7px;height:7px;border-radius:50%;background:#444;display:inline-block;"></span>
         <span id="statusText" style="font-size:0.62rem;color:#555;">servidor...</span>
       </div>
-      <button class="btn-crear" onclick="openModal()">⊕ CREAR ARTÍCULO</button>
+      <button class="btn-crear" id="btnCrear" onclick="pedirAccesoAdmin()" style="display:none;">⊕ CREAR ARTÍCULO</button>
+      <button class="btn-crear" id="btnAcceso" onclick="abrirLockAdmin()" style="background:linear-gradient(135deg,#1a3a4a,#0a1a28);border:1px solid var(--border-cyan);">🔒 ACCESO ADMIN</button>
+      <button class="btn-admin-cerrar-sesion" id="btnCerrarSesion" onclick="cerrarSesionAdmin()">✕ SALIR</button>
     </div>
   </div>
 
@@ -792,6 +884,21 @@
   </div>
 </div>
 
+<!-- ══════════ MODAL ACCESO ADMIN ══════════ -->
+<div class="admin-lock-overlay" id="adminLockOverlay">
+  <div class="admin-lock-box">
+    <div class="admin-lock-icon">🔐</div>
+    <div class="admin-lock-title">Acceso Administrador</div>
+    <div class="admin-lock-sub">Ingresa tu clave para acceder<br>a las funciones de edición</div>
+    <input class="admin-lock-input" type="password" id="adminPasswordInput"
+           placeholder="••••••••" onkeydown="if(event.key==='Enter') verificarAdmin()">
+    <div class="admin-lock-error" id="adminError"></div>
+    <div>
+      <button class="btn-admin-ingresar" onclick="verificarAdmin()">INGRESAR</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ MODAL CONFIRMAR BORRADO ══════════ -->
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-box">
@@ -817,7 +924,7 @@
   // URL del backend: cambia automáticamente entre local e internet
   const API = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || window.location.protocol === 'file:'
     ? 'http://localhost:3001/api'
-    : 'https://novix-is.onrender.com/api';
+    : 'https://REEMPLAZAR-CON-TU-URL-DE-RENDER.onrender.com/api';
 
   // ── DATA STORE (caché local) ──
   const articles = {};
@@ -846,6 +953,58 @@
       console.warn('Backend no disponible. Modo sin persistencia.');
     }
   }
+
+  // ── SISTEMA DE ADMINISTRADOR ──
+  // Cambia esta contraseña por la que tú quieras
+  const ADMIN_PASSWORD = 'andres.221010';
+  let esAdmin = false;
+
+  function abrirLockAdmin() {
+    document.getElementById('adminPasswordInput').value = '';
+    document.getElementById('adminError').textContent = '';
+    document.getElementById('adminLockOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('adminPasswordInput').focus(), 100);
+  }
+
+  function verificarAdmin() {
+    const input = document.getElementById('adminPasswordInput').value;
+    if (input === ADMIN_PASSWORD) {
+      esAdmin = true;
+      document.getElementById('adminLockOverlay').classList.remove('open');
+      // Mostrar controles de admin
+      document.getElementById('btnCrear').style.display = 'block';
+      document.getElementById('btnAcceso').style.display = 'none';
+      document.getElementById('btnCerrarSesion').style.display = 'inline-block';
+      // Refrescar la categoría actual para mostrar botones de borrar
+      renderCategory(currentCategory);
+      showNotif('✓ Sesión de administrador iniciada');
+    } else {
+      document.getElementById('adminError').textContent = '⚠ Clave incorrecta. Inténtalo de nuevo.';
+      document.getElementById('adminPasswordInput').value = '';
+      document.getElementById('adminPasswordInput').focus();
+    }
+  }
+
+  function pedirAccesoAdmin() {
+    if (esAdmin) openModal();
+    else abrirLockAdmin();
+  }
+
+  function cerrarSesionAdmin() {
+    esAdmin = false;
+    document.getElementById('btnCrear').style.display = 'none';
+    document.getElementById('btnAcceso').style.display = 'block';
+    document.getElementById('btnCerrarSesion').style.display = 'none';
+    renderCategory(currentCategory);
+    showNotif('Sesión de administrador cerrada');
+  }
+
+  // Cerrar modal admin al hacer clic fuera
+  document.getElementById('adminLockOverlay').addEventListener('click', function(e) {
+    if (e.target === this) {
+      this.classList.remove('open');
+    }
+  });
 
   // ── VERIFICAR ESTADO DEL SERVIDOR ──
   async function checkServerStatus() {
@@ -914,17 +1073,6 @@
       card.className = 'article-card';
       card.style.position = 'relative';
 
-      // Crear el botón borrar con data attributes para evitar problemas de comillas
-      const delBtn = document.createElement('button');
-      delBtn.className = 'btn-delete';
-      delBtn.textContent = '✕ BORRAR';
-      delBtn.dataset.cat = cat;
-      delBtn.dataset.idx = i;
-      delBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        askDelete(cat, i);
-      });
-
       const inner = document.createElement('div');
       inner.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;gap:8px;';
 
@@ -935,8 +1083,19 @@
         <div class="article-card-title">${art.title}</div>
         <div class="article-card-preview">${(art.content || '').replace(/<[^>]*>/g,'').substring(0,180)}…</div>`;
 
-      inner.appendChild(info);
-      inner.appendChild(delBtn);
+      // Solo mostrar botón borrar si es administrador
+      if (esAdmin) {
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-delete';
+        delBtn.textContent = '✕ BORRAR';
+        delBtn.dataset.cat = cat;
+        delBtn.dataset.idx = i;
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          askDelete(cat, i);
+        });
+        inner.appendChild(delBtn);
+      }
       card.appendChild(inner);
 
       card.addEventListener('click', () => renderArticle(art));
