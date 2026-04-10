@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "novix.html", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "novix.html" }
+  ]
+}
