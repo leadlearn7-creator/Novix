@@ -924,7 +924,7 @@
   // URL del backend: cambia automáticamente entre local e internet
   const API = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || window.location.protocol === 'file:'
     ? 'http://localhost:3001/api'
-    : 'novix-production-fb69.up.railway.app/api';
+    : 'https://REEMPLAZAR-CON-TU-URL-DE-RENDER.onrender.com/api';
 
   // ── DATA STORE (caché local) ──
   const articles = {};
@@ -956,7 +956,7 @@
 
   // ── SISTEMA DE ADMINISTRADOR ──
   // Cambia esta contraseña por la que tú quieras
-  const ADMIN_PASSWORD = 'andres.221010';
+  const ADMIN_PASSWORD = 'novix2026';
   let esAdmin = false;
 
   function abrirLockAdmin() {
@@ -1164,60 +1164,47 @@
     if (!title) { showNotif('⚠ Ingresa un título para el artículo'); return; }
     if (!selectedFile) { showNotif('⚠ Selecciona un archivo .docx o .txt'); return; }
 
-    const isDocx = selectedFile.name.toLowerCase().match(/\.docx?$/);
+    showNotif('⏳ Subiendo artículo...');
 
-    // ── Intentar enviar al servidor backend ──
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('category', cat);
+    formData.append('file', selectedFile);
+
+    let res, json;
+
     try {
-      showNotif('⏳ Convirtiendo y guardando artículo...');
-
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('category', cat);
-      formData.append('file', selectedFile);
-
-      const res = await fetch(`${API}/articles`, {
+      res = await fetch(`${API}/articles`, {
         method: 'POST',
         body: formData
       });
-
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-
-      const json = await res.json();
-
-      if (json.ok) {
-        articles[cat].push(json.article);
-        closeModal();
-        currentCategory = cat;
-        updateActiveNav(cat);
-        renderCategory(cat);
-        showNotif('✓ Artículo publicado y guardado correctamente');
-        return;
-      } else {
-        showNotif('⚠ Error: ' + json.error);
-        return;
-      }
-
-    } catch (e) {
-      // El servidor no está corriendo
-      if (isDocx) {
-        // No podemos convertir .docx sin servidor — avisamos claramente
-        showNotif('⚠ El servidor no está activo. Ejecuta: node server.js');
-        return;
-      }
-      // Para .txt sí podemos continuar en modo local
+    } catch (networkErr) {
+      // Error de red real — servidor caído o CORS bloqueado antes de llegar
+      showNotif('⚠ Sin conexión con el servidor. Intenta de nuevo.');
+      console.error('Network error:', networkErr);
+      return;
     }
 
-    // ── Modo local solo para .txt ──
-    const content = selectedFileContent
-      ? selectedFileContent.split('\n').filter(l => l.trim()).map(l => `<p>${l}</p>`).join('')
-      : `<p><strong>${title}</strong></p>`;
+    // El fetch llegó al servidor — ahora leemos la respuesta
+    try {
+      json = await res.json();
+    } catch (parseErr) {
+      showNotif('⚠ Respuesta inesperada del servidor (código ' + res.status + ')');
+      console.error('Parse error, status:', res.status, parseErr);
+      return;
+    }
 
-    articles[cat].push({ id: Date.now(), title, category: cat, content });
-    closeModal();
-    currentCategory = cat;
-    updateActiveNav(cat);
-    renderCategory(cat);
-    showNotif('✓ Artículo publicado (modo local — sin servidor)');
+    if (json.ok) {
+      articles[cat].push(json.article);
+      closeModal();
+      currentCategory = cat;
+      updateActiveNav(cat);
+      renderCategory(cat);
+      showNotif('✓ Artículo publicado correctamente');
+    } else {
+      showNotif('⚠ Error del servidor: ' + json.error);
+      console.error('Server error:', json);
+    }
   }
 
   function updateActiveNav(cat) {
