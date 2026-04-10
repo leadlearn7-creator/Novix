@@ -924,7 +924,7 @@
   // URL del backend: cambia automáticamente entre local e internet
   const API = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || window.location.protocol === 'file:'
     ? 'http://localhost:3001/api'
-    : 'novix-production-fb69.up.railway.app/api';
+    : 'https://novix-production-fb69.up.railway.app/api/articles/api';
 
   // ── DATA STORE (caché local) ──
   const articles = {};
