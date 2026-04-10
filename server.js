@@ -46,8 +46,9 @@ app.use(cors({
   origin: [
     'http://localhost:3001',
     'http://127.0.0.1:3001',
-    /\.vercel\.app$/,   // cualquier subdominio de vercel.app
-    /\.onrender\.com$/, // el propio Render también
+    'https://novix-isabel.vercel.app',
+    /\.vercel\.app$/,
+    /\.up\.railway\.app$/,
   ],
   methods: ['GET', 'POST', 'DELETE'],
 }));
