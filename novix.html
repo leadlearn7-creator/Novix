@@ -1083,6 +1083,8 @@
         <div class="article-card-title">${art.title}</div>
         <div class="article-card-preview">${(art.content || '').replace(/<[^>]*>/g,'').substring(0,180)}…</div>`;
 
+      inner.appendChild(info); // ← agregar info primero
+
       // Solo mostrar botón borrar si es administrador
       if (esAdmin) {
         const delBtn = document.createElement('button');
